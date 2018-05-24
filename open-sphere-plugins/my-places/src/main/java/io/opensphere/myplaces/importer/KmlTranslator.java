@@ -10,6 +10,7 @@ import de.micromata.opengis.kml.v_2_2_0.Folder;
 import de.micromata.opengis.kml.v_2_2_0.Kml;
 import de.micromata.opengis.kml.v_2_2_0.Placemark;
 import de.micromata.opengis.kml.v_2_2_0.Style;
+import de.micromata.opengis.kml.v_2_2_0.StyleSelector;
 import io.opensphere.core.Toolbox;
 import io.opensphere.core.util.ColorUtilities;
 import io.opensphere.mantle.data.DataGroupInfo;
@@ -55,11 +56,15 @@ public class KmlTranslator
         Feature feature = kml.getFeature();
         if (feature instanceof Document)
         {
+            /**
+             * This document has all of the styles that define the layout of the kml.
+             */
             Document document = (Document)feature;
             for (Feature aFeature : document.getFeature())
             {
                 if (aFeature instanceof Folder)
                 {
+                    System.out.println("fromKML: " + aFeature.getName());
                     dataGroup = parseFolder((Folder)aFeature, true);
                 }
             }
@@ -97,9 +102,16 @@ public class KmlTranslator
                 MyPlacesDataTypeInfo dataType = parsePlacemark((Placemark)feature);
                 dataGroup.addMember(dataType, this);
             }
+            
+            /*
+             * Folders have a style URL that all children should follow
+             */
             else if (feature instanceof Folder)
             {
                 MyPlacesDataGroupInfo childGroup = parseFolder((Folder)feature, false);
+                if(childGroup.getKmlFolder() != null) {
+                    //System.out.println(childGroup.getKmlFolder().getStyleUrl());
+                }
                 dataGroup.addChild(childGroup, this);
             }
         }
@@ -118,6 +130,7 @@ public class KmlTranslator
         MapVisualizationType visType = ExtendedDataUtils.getVisualizationType(placemark.getExtendedData());
         MyPlacesDataTypeInfo dataType = PlacemarkUtils.createDataType(placemark, myToolbox, this,
                 TypeControllerFactory.getInstance().getController(visType));
+
         return dataType;
     }
 

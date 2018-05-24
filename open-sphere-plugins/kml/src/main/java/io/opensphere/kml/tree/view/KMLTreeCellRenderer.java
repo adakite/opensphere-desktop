@@ -15,6 +15,7 @@ import java.util.Map;
 
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
+import javax.swing.JRadioButton;
 import javax.swing.JTree;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeCellRenderer;
@@ -122,6 +123,7 @@ public class KMLTreeCellRenderer extends DefaultTreeCellRenderer
 
         initIcons();
 
+        System.out.println("Init Tree Cell REnderere");
         // Make the non selected cell transparent
         setBackgroundNonSelectionColor(new Color(0, 0, 0, 0));
 
@@ -130,10 +132,18 @@ public class KMLTreeCellRenderer extends DefaultTreeCellRenderer
         setBackgroundSelectionColor(new Color(c.getRed(), c.getGreen(), c.getBlue(), 191));
     }
 
+    /**
+     * Implement the kml radio button here if the style is that {@inheritDoc}
+     *
+     * @see javax.swing.tree.DefaultTreeCellRenderer#getTreeCellRendererComponent(javax.swing.JTree,
+     *      java.lang.Object, boolean, boolean, boolean, int, boolean)
+     */
     @Override
     public Component getTreeCellRendererComponent(final JTree tree, Object value, boolean sel, boolean expanded, boolean leaf,
             int row, boolean focus)
     {
+        System.out.println("HEREEEEEE");
+        //JRadioButton r1 = new JRadioButton("A) Male");
         // Set up
         KMLFeature kmlFeature = null;
         String labelText = value.toString();
@@ -144,6 +154,8 @@ public class KMLTreeCellRenderer extends DefaultTreeCellRenderer
             {
                 kmlFeature = (KMLFeature)treeNode.getUserObject();
 
+                System.out.println("KMLTreeCellRenderer : " + kmlFeature.getName() + " " + kmlFeature.getStyleUrl() + " "
+                        + kmlFeature.getChildren().size());
                 updateKMLFeature(kmlFeature, expanded);
                 labelText = kmlFeature.getLabelText();
 

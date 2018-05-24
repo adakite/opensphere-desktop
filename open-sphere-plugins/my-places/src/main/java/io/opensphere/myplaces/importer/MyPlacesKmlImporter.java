@@ -45,6 +45,7 @@ public class MyPlacesKmlImporter extends AbstractMyPlacesImporter
         if (kml != null && kml.getFeature() instanceof Document)
         {
             Document importDoc = (Document)kml.getFeature();
+                        
 
             folder = new Folder();
             folder.setName(folderName);
