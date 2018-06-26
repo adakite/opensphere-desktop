@@ -13,22 +13,10 @@ import io.opensphere.mantle.plugin.queryregion.QueryRegion;
 /**
  * Default implementation for {@link QueryRegion}.
  */
-public class DefaultQueryRegion implements QueryRegion
+public class DefaultQueryRegion extends AbstractTypedGeometricRegion implements QueryRegion
 {
-    /** The geometries. */
-    private final Collection<? extends PolygonGeometry> myGeometries;
-
-    /**
-     * Mapping of type keys for layers associated with the query to filters for
-     * those layers.
-     */
-    private final Map<? extends String, ? extends DataFilter> myTypeKeyToFilterMap;
-
     /** The times that the query region is valid. */
     private final Collection<? extends TimeSpan> myValidTimes;
-
-    /** The ID of the query region. */
-    private volatile String myId;
 
     /**
      * Constructor.
@@ -41,55 +29,14 @@ public class DefaultQueryRegion implements QueryRegion
     public DefaultQueryRegion(Collection<? extends PolygonGeometry> geometries, Collection<? extends TimeSpan> validTimes,
             Map<? extends String, ? extends DataFilter> typeKeyToFilterMap)
     {
-        myGeometries = New.unmodifiableCollection(Utilities.checkNull(geometries, "geometries"));
+        super(geometries, typeKeyToFilterMap);
         myValidTimes = New.unmodifiableCollection(Utilities.checkNull(validTimes, "validTimes"));
-        myTypeKeyToFilterMap = New.unmodifiableMap(Utilities.checkNull(typeKeyToFilterMap, "typeKeyToFilterMap"));
-    }
-
-    @Override
-    public boolean appliesToType(String typeKey)
-    {
-        return myTypeKeyToFilterMap.isEmpty() || myTypeKeyToFilterMap.containsKey(typeKey);
-    }
-
-    @Override
-    public Map<? extends String, ? extends DataFilter> getTypeKeyToFilterMap()
-    {
-        return myTypeKeyToFilterMap;
-    }
-
-    @Override
-    public Collection<? extends PolygonGeometry> getGeometries()
-    {
-        return myGeometries;
-    }
-
-    @Override
-    public Collection<? extends String> getTypeKeys()
-    {
-        return myTypeKeyToFilterMap.keySet();
     }
 
     @Override
     public Collection<? extends TimeSpan> getValidTimes()
     {
         return myValidTimes;
-    }
-
-    @Override
-    public String getId()
-    {
-        return myId;
-    }
-
-    /**
-     * Sets the id.
-     *
-     * @param id the id
-     */
-    public void setId(String id)
-    {
-        myId = id;
     }
 
     @Override
@@ -112,7 +59,7 @@ public class DefaultQueryRegion implements QueryRegion
         {
             sb.append(timeSpan).append(' ');
         }
-        sb.append(myTypeKeyToFilterMap);
+        sb.append(getTypeKeyToFilterMap());
         return sb.toString();
     }
 }

@@ -54,6 +54,15 @@ public interface DataFilterRegistry
     long addSpatialLoadFilter(String typeKey, Geometry filter);
 
     /**
+     * Adds a spatial exclusion filter for the given type key.
+     *
+     * @param typeKey the type key
+     * @param filter the spatial load filter
+     * @return the unique id for the filter.
+     */
+    long addSpatialExclusionFilter(String typeKey, Geometry filter);
+
+    /**
      * De-register a filter.
      *
      * @param id The id of the filter.
@@ -103,6 +112,22 @@ public interface DataFilterRegistry
     Set<String> getSpatialLoadFilterKeys();
 
     /**
+     * Gets the current spatial exclusion {@link Geometry} filter that belongs
+     * to the specified type key.
+     *
+     * @param typeKey the type key
+     * @return the {@link Geometry} filter or null if there is none.
+     */
+    Geometry getSpatialExclusionFilter(String typeKey);
+
+    /**
+     * Gets the current spatial exclusion {@link Geometry} filter type keys.
+     *
+     * @return the Set of {@link Geometry} filter type keys.
+     */
+    Set<String> getSpatialExclusionFilterKeys();
+
+    /**
      * Returns true if there is an established load filter for the specified
      * type key.
      *
@@ -119,6 +144,15 @@ public interface DataFilterRegistry
      * @return true if there is an established spatial load filter.
      */
     boolean hasSpatialLoadFilter(String typeKey);
+
+    /**
+     * Returns true if there is an established spatial exclusion filter for the
+     * specified type key.
+     *
+     * @param typeKey the type key
+     * @return true if there is an established spatial exclusion filter.
+     */
+    boolean hasSpatialExclusionFilter(String typeKey);
 
     /**
      * Register a filter with the registry for later looking up. This does not
@@ -157,6 +191,16 @@ public interface DataFilterRegistry
      * @return true if removed, false if not
      */
     boolean removeSpatialLoadFilter(String typeKey);
+
+    /**
+     * Removes/deactivate the spatial exclusion filter currently active for the
+     * specified type. Returns true if removed, false if no current filter for
+     * the type key.
+     *
+     * @param typeKey for which to remove the filter.
+     * @return true if removed, false if not
+     */
+    boolean removeSpatialExclusionFilter(String typeKey);
 
     /**
      * Search the registered filters and return any whose ids match the given

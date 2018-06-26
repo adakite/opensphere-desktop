@@ -75,11 +75,15 @@ import io.opensphere.wfs.envoy.WFSDataRegistryHelper;
 import io.opensphere.wfs.layer.SingleLayerRequeryEvent;
 import io.opensphere.wfs.layer.SingleLayerRequeryEvent.RequeryType;
 import io.opensphere.wfs.layer.WFSDataType;
+import io.opensphere.wfs.mantle.WFSGovernor;
 
 /**
  * Responsible for listening for query regions and performing the necessary
  * requests against the data registry.
+ *
+ * @deprecated see {@link WFSGovernor} instead.
  */
+@Deprecated
 @SuppressWarnings("PMD.GodClass")
 public class WFSControls
 {

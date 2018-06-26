@@ -1,11 +1,13 @@
 package io.opensphere.mantle.data.element.mdfilter;
 
 import java.math.BigInteger;
+import java.util.Collection;
 
 import com.vividsolutions.jts.geom.Geometry;
 
 import io.opensphere.core.datafilter.DataFilter;
 import io.opensphere.core.model.time.TimeSpan;
+import io.opensphere.core.util.collections.New;
 import io.opensphere.core.util.lang.Pair;
 
 /**
@@ -27,6 +29,9 @@ public class OGCFilterParameters
 
     /** The region over which data is desired. */
     private Geometry myRegion;
+
+    /** An optional collection of exclusion areas for the query. */
+    private final Collection<? extends Geometry> myExclusionAreas = New.set();
 
     /** The Spatial Reference System (SRS) string to use for this request. */
     private String mySrs;
@@ -81,6 +86,16 @@ public class OGCFilterParameters
     public Geometry getRegion()
     {
         return myRegion;
+    }
+
+    /**
+     * Gets the value of the exclusionAreas ({@link #myExclusionAreas}) field.
+     *
+     * @return the value stored in the {@link #myExclusionAreas} field.
+     */
+    public Collection<? extends Geometry> getExclusionAreas()
+    {
+        return myExclusionAreas;
     }
 
     /**

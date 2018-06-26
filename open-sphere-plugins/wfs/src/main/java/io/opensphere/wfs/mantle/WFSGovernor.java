@@ -3,6 +3,7 @@ package io.opensphere.wfs.mantle;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 import org.apache.log4j.Logger;
 
@@ -30,6 +31,7 @@ import io.opensphere.mantle.MantleToolbox;
 import io.opensphere.mantle.data.DataTypeInfo;
 import io.opensphere.mantle.data.element.MapDataElement;
 import io.opensphere.mantle.data.util.DataElementLookupException;
+import io.opensphere.mantle.plugin.queryregion.ExclusionRegion;
 import io.opensphere.mantle.plugin.queryregion.QueryRegion;
 import io.opensphere.wfs.envoy.WFSDataRegistryHelper;
 
@@ -66,9 +68,14 @@ public class WFSGovernor extends TimeSpanGovernor implements QueryTrackerListene
     private final QueryRegion myRegion;
 
     /**
-     * The layer to retrieve wfs features for.
+     * The layer for which to retrieve WFS features.
      */
     private final DataTypeInfo myWfsLayer;
+
+    /**
+     * The spatial exclusion areas in which no data should be queried.
+     */
+    private final Collection<ExclusionRegion> myExclusions;
 
     /**
      * Constructs a new {@link TimeSpanGovernor} that retrieves wfs features
@@ -78,13 +85,17 @@ public class WFSGovernor extends TimeSpanGovernor implements QueryTrackerListene
      * @param dataRegistry Used to query for data.
      * @param wfsLayer The layer to retrieve the features for.
      * @param region The area to retrieve the features for.
+     * @param exclusions the spatial exclusion areas in which no data should be
+     *            queried.
      */
-    public WFSGovernor(MantleToolbox mantle, DataRegistry dataRegistry, DataTypeInfo wfsLayer, QueryRegion region)
+    public WFSGovernor(MantleToolbox mantle, DataRegistry dataRegistry, DataTypeInfo wfsLayer, QueryRegion region,
+            Collection<ExclusionRegion> exclusions)
     {
         super(ourAllTime);
         myDataRegistry = dataRegistry;
         myWfsLayer = wfsLayer;
         myRegion = region;
+        myExclusions = exclusions;
         myDataClearer = new WFSDataClearer(mantle, myWfsLayer, myRegion);
     }
 
@@ -146,6 +157,16 @@ public class WFSGovernor extends TimeSpanGovernor implements QueryTrackerListene
                     myRegion.getTypeKeyToFilterMap().get(myWfsLayer.getTypeKey()));
         }
 
+        Set<GeometryMatcher> exclusionMatchers = New.set();
+        for (ExclusionRegion exclusionRegion : myExclusions)
+        {
+            for (Polygon exclusionPoly : JTSCoreGeometryUtilities.convertToJTSPolygonsAndSplit(exclusionRegion.getGeometries()))
+            {
+                exclusionMatchers.add(new GeometryMatcher(GeometryAccessor.GEOMETRY_PROPERTY_NAME,
+                        GeometryMatcher.OperatorType.DISJOINT, exclusionPoly));
+            }
+        }
+
         for (Polygon poly : JTSCoreGeometryUtilities.convertToJTSPolygonsAndSplit(myRegion.getGeometries()))
         {
             GeometryMatcher geometry = new GeometryMatcher(GeometryAccessor.GEOMETRY_PROPERTY_NAME,
@@ -155,7 +176,9 @@ public class WFSGovernor extends TimeSpanGovernor implements QueryTrackerListene
             {
                 TimeSpan toUse = span;
 
-                // When span is all of eternity, this means the layer we are querying is timeless so we want to send timeless in the query.
+                // When span is all of eternity, this means the layer we are
+                // querying is timeless so we want to send timeless in the
+                // query.
                 if (span.equals(ourAllTime))
                 {
                     toUse = TimeSpan.TIMELESS;
@@ -164,6 +187,10 @@ public class WFSGovernor extends TimeSpanGovernor implements QueryTrackerListene
                 TimeSpanMatcher time = new TimeSpanMatcher(TimeSpanAccessor.TIME_PROPERTY_NAME, toUse);
 
                 List<PropertyMatcher<?>> matchers = New.list(geometry, time);
+                if (!exclusionMatchers.isEmpty())
+                {
+                    matchers.addAll(exclusionMatchers);
+                }
                 if (filter != null)
                 {
                     matchers.add(filter);

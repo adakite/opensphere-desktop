@@ -39,9 +39,12 @@ import io.opensphere.mantle.controller.DataGroupController;
 import io.opensphere.mantle.controller.event.DataTypeInfoFocusEvent;
 import io.opensphere.mantle.data.DataTypeInfo;
 import io.opensphere.mantle.data.TypeFocusEvent.FocusType;
+import io.opensphere.mantle.plugin.queryregion.ExclusionRegion;
+import io.opensphere.mantle.plugin.queryregion.ExclusionRegionListener;
 import io.opensphere.mantle.plugin.queryregion.QueryRegion;
 import io.opensphere.mantle.plugin.queryregion.QueryRegionListener;
 import io.opensphere.mantle.plugin.queryregion.QueryRegionManager;
+import io.opensphere.mantle.plugin.queryregion.TypedGeometicRegion;
 import io.opensphere.mantle.plugin.selection.SelectionCommand;
 import io.opensphere.mantle.plugin.selection.SelectionCommandProcessor;
 import io.opensphere.mantle.util.MantleToolboxUtils;
@@ -52,10 +55,13 @@ import io.opensphere.mantle.util.MantleToolboxUtils;
 public class QueryRegionManagerImpl extends EventListenerService implements QueryRegionManager, SelectionCommandProcessor
 {
     /** Change support for query region listeners. */
-    private final ChangeSupport<QueryRegionListener> myChangeSupport = WeakChangeSupport.create();
+    private final ChangeSupport<QueryRegionListener> myQueryRegionChangeSupport = WeakChangeSupport.create();
+
+    /** Change support for query region listeners. */
+    private final ChangeSupport<ExclusionRegionListener> myExclusionRegionChangeSupport = WeakChangeSupport.create();
 
     /** The Delete context menu provider. */
-    private final ContextMenuProvider<Void> myDeleteContextMenuProvider = new ContextMenuProvider<Void>()
+    private final ContextMenuProvider<Void> myDeleteContextMenuProvider = new ContextMenuProvider<>()
     {
         @Override
         public List<JMenuItem> getMenuItems(String contextId, Void key)
@@ -91,6 +97,9 @@ public class QueryRegionManagerImpl extends EventListenerService implements Quer
     /** The query regions. */
     private final Set<QueryRegion> myQueryRegions;
 
+    /** The query regions. */
+    private final Set<ExclusionRegion> myExclusionRegions;
+
     /** Event listener that triggers removal of all query regions. */
     private final EventListener<DataRemovalEvent> myRemoveAllEventListener;
 
@@ -109,8 +118,16 @@ public class QueryRegionManagerImpl extends EventListenerService implements Quer
         super(tb.getEventManager());
         myToolbox = tb;
         myModuleStateController = new QueryRegionStateController(this, tb);
+
         myQueryRegions = New.set();
-        myRemoveAllEventListener = event -> removeAllQueryRegions();
+        myExclusionRegions = New.set();
+
+        myRemoveAllEventListener = event ->
+        {
+            removeAllQueryRegions();
+            removeAllExclusionRegions();
+        };
+
         myToolbox.getEventManager().subscribe(DataRemovalEvent.class, myRemoveAllEventListener);
         myToolbox.getUIRegistry().getContextActionManager().registerContextMenuItemProvider(ContextIdentifiers.DELETE_CONTEXT,
                 Void.class, myDeleteContextMenuProvider);
@@ -124,7 +141,7 @@ public class QueryRegionManagerImpl extends EventListenerService implements Quer
 
         // Register the state manager after all the other plugins so that
         // queries will get activated after other layers.
-        myListener = new EventListener<ApplicationLifecycleEvent>()
+        myListener = new EventListener<>()
         {
             @Override
             public void notify(ApplicationLifecycleEvent event)
@@ -160,10 +177,13 @@ public class QueryRegionManagerImpl extends EventListenerService implements Quer
             {
                 myQueryRegions.forEach(r -> r.getGeometries().forEach(
                         g -> g.getRenderProperties().setHidden(!types.stream().anyMatch(t -> r.appliesToType(t.getTypeKey())))));
+                myExclusionRegions.forEach(r -> r.getGeometries().forEach(
+                        g -> g.getRenderProperties().setHidden(!types.stream().anyMatch(t -> r.appliesToType(t.getTypeKey())))));
             }
             else
             {
                 myQueryRegions.forEach(r -> r.getGeometries().forEach(g -> g.getRenderProperties().setHidden(false)));
+                myExclusionRegions.forEach(r -> r.getGeometries().forEach(g -> g.getRenderProperties().setHidden(false)));
             }
         }
     }
@@ -208,13 +228,44 @@ public class QueryRegionManagerImpl extends EventListenerService implements Quer
         }
         myToolbox.getGeometryRegistry().addGeometriesForSource(this, geometries);
 
-        myChangeSupport.notifyListeners(listener -> listener.queryRegionAdded(region), myDispatchExecutor);
+        myQueryRegionChangeSupport.notifyListeners(listener -> listener.queryRegionAdded(region), myDispatchExecutor);
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @see io.opensphere.mantle.plugin.queryregion.QueryRegionManager#addExclusionRegion(io.opensphere.mantle.plugin.queryregion.ExclusionRegion)
+     */
+    @Override
+    public void addExclusionRegion(ExclusionRegion region)
+    {
+        synchronized (myExclusionRegions)
+        {
+            myExclusionRegions.add(region);
+        }
+        Collection<PolygonGeometry> geometries = New.collection(region.getGeometries().size());
+        for (PolygonGeometry polygon : region.getGeometries())
+        {
+            if (polygon.getRenderProperties().isDrawable() || polygon.getRenderProperties().isPickable())
+            {
+                geometries.add(polygon);
+            }
+        }
+        myToolbox.getGeometryRegistry().addGeometriesForSource(this, geometries);
+
+        myExclusionRegionChangeSupport.notifyListeners(listener -> listener.exclusionRegionAdded(region), myDispatchExecutor);
     }
 
     @Override
     public void addQueryRegionListener(QueryRegionListener listener)
     {
-        myChangeSupport.addListener(listener);
+        myQueryRegionChangeSupport.addListener(listener);
+    }
+
+    @Override
+    public void addExclusionRegionListener(ExclusionRegionListener listener)
+    {
+        myExclusionRegionChangeSupport.addListener(listener);
     }
 
     /**
@@ -234,11 +285,31 @@ public class QueryRegionManagerImpl extends EventListenerService implements Quer
     }
 
     @Override
+    public ExclusionRegion getExclusionRegion(Geometry geom)
+    {
+        return getExclusionRegions().stream().filter(r -> r.getGeometries().contains(geom)).findAny().orElse(null);
+    }
+
+    @Override
     public List<? extends QueryRegion> getQueryRegions()
     {
         synchronized (myQueryRegions)
         {
             return New.unmodifiableList(myQueryRegions);
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @see io.opensphere.mantle.plugin.queryregion.QueryRegionManager#getExclusionRegions()
+     */
+    @Override
+    public List<? extends ExclusionRegion> getExclusionRegions()
+    {
+        synchronized (myExclusionRegions)
+        {
+            return New.unmodifiableList(myExclusionRegions);
         }
     }
 
@@ -251,7 +322,24 @@ public class QueryRegionManagerImpl extends EventListenerService implements Quer
             myQueryRegions.clear();
         }
 
-        myChangeSupport.notifyListeners(listener -> listener.allQueriesRemoved(false), myDispatchExecutor);
+        myQueryRegionChangeSupport.notifyListeners(listener -> listener.allQueriesRemoved(false), myDispatchExecutor);
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @see io.opensphere.mantle.plugin.queryregion.QueryRegionManager#removeAllExclusionRegions()
+     */
+    @Override
+    public void removeAllExclusionRegions()
+    {
+        synchronized (myExclusionRegions)
+        {
+            removeAllExclusionBoundsFromGeometryRegistry();
+            myExclusionRegions.clear();
+        }
+
+        myExclusionRegionChangeSupport.notifyListeners(listener -> listener.allExclusionsRemoved(false), myDispatchExecutor);
     }
 
     @Override
@@ -271,6 +359,22 @@ public class QueryRegionManagerImpl extends EventListenerService implements Quer
     }
 
     @Override
+    public void removeExclusionRegion(Collection<? extends Geometry> bounds)
+    {
+        synchronized (myExclusionRegions)
+        {
+            for (ExclusionRegion region : myExclusionRegions)
+            {
+                if (region.getGeometries().containsAll(bounds))
+                {
+                    removeExclusionRegion(region);
+                    break;
+                }
+            }
+        }
+    }
+
+    @Override
     public boolean removeQueryRegion(final QueryRegion region)
     {
         Utilities.checkNull(region, "region");
@@ -281,8 +385,25 @@ public class QueryRegionManagerImpl extends EventListenerService implements Quer
         }
         if (removed)
         {
-            removeQueryBoundsFromGeometryRegistry(region);
-            myChangeSupport.notifyListeners(listener -> listener.queryRegionRemoved(region), myDispatchExecutor);
+            removeBoundsFromGeometryRegistry(region);
+            myQueryRegionChangeSupport.notifyListeners(listener -> listener.queryRegionRemoved(region), myDispatchExecutor);
+        }
+        return removed;
+    }
+
+    @Override
+    public boolean removeExclusionRegion(final ExclusionRegion region)
+    {
+        Utilities.checkNull(region, "region");
+        boolean removed;
+        synchronized (myExclusionRegions)
+        {
+            removed = myExclusionRegions.remove(region);
+        }
+        if (removed)
+        {
+            removeBoundsFromGeometryRegistry(region);
+            myExclusionRegionChangeSupport.notifyListeners(listener -> listener.exclusionRegionRemoved(region), myDispatchExecutor);
         }
         return removed;
     }
@@ -290,16 +411,25 @@ public class QueryRegionManagerImpl extends EventListenerService implements Quer
     @Override
     public void removeQueryRegionListener(QueryRegionListener listener)
     {
-        myChangeSupport.removeListener(listener);
+        myQueryRegionChangeSupport.removeListener(listener);
+    }
+
+    @Override
+    public void removeExclusionRegionListener(ExclusionRegionListener listener)
+    {
+        myExclusionRegionChangeSupport.removeListener(listener);
     }
 
     @Override
     public void removeQueryRegions(Collection<? extends QueryRegion> regions)
     {
-        for (QueryRegion queryRegion : regions)
-        {
-            removeQueryRegion(queryRegion);
-        }
+        regions.forEach(r -> removeQueryRegion(r));
+    }
+
+    @Override
+    public void removeExclusionRegions(Collection<? extends ExclusionRegion> regions)
+    {
+        regions.forEach(r -> removeExclusionRegion(r));
     }
 
     /**
@@ -411,11 +541,56 @@ public class QueryRegionManagerImpl extends EventListenerService implements Quer
     }
 
     /**
+     * {@inheritDoc}
+     *
+     * @see io.opensphere.mantle.plugin.queryregion.QueryRegionManager#deriveExclusionPolygons(java.util.Collection)
+     */
+    @Override
+    public Collection<? extends PolygonGeometry> deriveExclusionPolygons(Collection<? extends PolygonGeometry> input)
+    {
+        // Do not derive new exclusion polygons if the exclusion polygons are
+        // already known.
+        if (getExclusionRegions().stream().filter((region) -> region.getGeometries().containsAll(input)).count() > 0)
+        {
+            return input;
+        }
+
+        Collection<PolygonGeometry> output = New.collection(input.size());
+
+        for (PolygonGeometry geom : input)
+        {
+            PolygonRenderProperties props = new DefaultPolygonRenderProperties(ZOrderRenderProperties.TOP_Z, true, true);
+            props.setColor(Colors.EXCLUSION_REGION);
+            props.setWidth(geom.getRenderProperties().getWidth());
+
+            output.add(geom.derive(props, (Constraints)null));
+        }
+
+        return output;
+    }
+
+    /**
      * Removes all my geometries from geometry registry.
      */
     private void removeAllQueryBoundsFromGeometryRegistry()
     {
-        myToolbox.getGeometryRegistry().removeGeometriesForSource(this);
+        // only remove query regions, not exclusion regions:
+        Set<PolygonGeometry> queryRegionGeometries = New.set();
+        getQueryRegions().stream().map(qr -> qr.getGeometries()).forEach(gc -> queryRegionGeometries.addAll(gc));
+
+        myToolbox.getGeometryRegistry().removeGeometriesForSource(this, queryRegionGeometries);
+    }
+
+    /**
+     * Removes all my geometries from geometry registry.
+     */
+    private void removeAllExclusionBoundsFromGeometryRegistry()
+    {
+        // only remove exclusion regions, not query regions:
+        Set<PolygonGeometry> exclusionRegionGeometries = New.set();
+        getExclusionRegions().stream().map(er -> er.getGeometries()).forEach(gc -> exclusionRegionGeometries.addAll(gc));
+
+        myToolbox.getGeometryRegistry().removeGeometriesForSource(this, exclusionRegionGeometries);
     }
 
     /**
@@ -423,7 +598,7 @@ public class QueryRegionManagerImpl extends EventListenerService implements Quer
      *
      * @param region The region.
      */
-    private void removeQueryBoundsFromGeometryRegistry(QueryRegion region)
+    private void removeBoundsFromGeometryRegistry(TypedGeometicRegion region)
     {
         myToolbox.getGeometryRegistry().removeGeometriesForSource(this, new HashSet<Geometry>(region.getGeometries()));
     }

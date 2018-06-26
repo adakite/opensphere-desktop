@@ -77,15 +77,32 @@ public final class OGCFilterGenerator
 
         // Create and add spatial filter if provided
         JAXBElement<? extends SpatialOpsType> spatialOp = null;
-        if (params.getRegion() != null && params.getGeometryTagName() != null)
+        if ((!params.getExclusionAreas().isEmpty() || params.getRegion() != null) && params.getGeometryTagName() != null)
         {
-            BinarySpatialOpType intersectType = new BinarySpatialOpType();
             PropertyNameType geomPropertyName = new PropertyNameType();
             geomPropertyName.setValue(params.getGeometryTagName());
-            intersectType.setPropertyName(geomPropertyName);
-            intersectType.setGeometry(buildGeomElement(params));
-            spatialOp = OGC_OBJECT_FACTORY.createIntersects(intersectType);
-            elementList.add(spatialOp);
+
+            if (params.getRegion() != null)
+            {
+                BinarySpatialOpType intersectType = new BinarySpatialOpType();
+                intersectType.setPropertyName(geomPropertyName);
+                intersectType.setGeometry(buildGeomElement(params));
+                spatialOp = OGC_OBJECT_FACTORY.createIntersects(intersectType);
+                elementList.add(spatialOp);
+            }
+
+            if (!params.getExclusionAreas().isEmpty())
+            {
+                for (Geometry exclusionArea : params.getExclusionAreas())
+                {
+                    BinarySpatialOpType disjointType = new BinarySpatialOpType();
+                    disjointType.setPropertyName(geomPropertyName);
+                    disjointType.setGeometry(buildDisjointGeomElement(exclusionArea, params.isLatBeforeLon()));
+                    JAXBElement<? extends SpatialOpsType> disjointOp = OGC_OBJECT_FACTORY.createDisjoint(disjointType);
+                    elementList.add(disjointOp);
+                }
+            }
+
         }
 
         // Create and add user filter if provided
@@ -185,6 +202,38 @@ public final class OGCFilterGenerator
             {
                 geomElement = JTSGMLUtilities.buildMultiPolygon(params.isLatBeforeLon(), multiPolygon);
             }
+        }
+        else
+        {
+            throw new UnsupportedOperationException(region.getClass() + " is not supported.");
+        }
+
+        return geomElement;
+    }
+
+    /**
+     * Builds the geometry element for a JAXB request.
+     *
+     * @param input The parameters which describe the filter being built.
+     * @param isLatBeforeLon a flag used to indicate that latitude is before
+     *            longitude in encoded operations.
+     * @return the JAXB geometry element representing the region
+     */
+    private static JAXBElement<? extends AbstractGeometryType> buildDisjointGeomElement(Geometry input, boolean isLatBeforeLon)
+    {
+        JAXBElement<? extends AbstractGeometryType> geomElement = null;
+
+        Geometry region = input instanceof Polygon ? processPolygon((Polygon)input) : input;
+
+        if (region instanceof Polygon)
+        {
+            geomElement = JTSGMLUtilities.GML_OBJECT_FACTORY
+                    .createPolygon(JTSGMLUtilities.createGMLPolygonType(isLatBeforeLon, (Polygon)region));
+        }
+        else if (region instanceof MultiPolygon)
+        {
+            MultiPolygon multiPolygon = (MultiPolygon)region;
+            geomElement = JTSGMLUtilities.buildMultiPolygon(isLatBeforeLon, multiPolygon);
         }
         else
         {

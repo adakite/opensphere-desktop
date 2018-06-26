@@ -64,6 +64,9 @@ public class Colors
     /** Query region. */
     public static final Color QUERY_REGION = Color.ORANGE;
 
+    /** Exclusion region. */
+    public static final Color EXCLUSION_REGION = Color.RED;
+
     /** Warning message color. */
     public static final javafx.scene.paint.Color WARNING = javafx.scene.paint.Color.YELLOW;
 

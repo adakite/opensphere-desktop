@@ -76,11 +76,29 @@ public interface QueryRegionManager
     void addQueryRegion(QueryRegion region);
 
     /**
+     * Add a exclusion region to the manager. The provided polygons will be sent
+     * to the geometry registry to be drawn if
+     * {@link BaseRenderProperties#isDrawable()} or
+     * {@link BaseRenderProperties#isPickable()} is {@code true}. Listeners will
+     * be notified of the new exclusion region.
+     *
+     * @param region The exclusion region.
+     */
+    void addExclusionRegion(ExclusionRegion region);
+
+    /**
      * Adds the query region listener.
      *
      * @param listener the listener
      */
     void addQueryRegionListener(QueryRegionListener listener);
+
+    /**
+     * Adds the exclusion region listener.
+     *
+     * @param listener the listener
+     */
+    void addExclusionRegionListener(ExclusionRegionListener listener);
 
     /**
      * Derive some orange query polygons from the input polygons.
@@ -92,12 +110,28 @@ public interface QueryRegionManager
     Collection<? extends PolygonGeometry> deriveQueryPolygons(Collection<? extends PolygonGeometry> input, boolean dotted);
 
     /**
+     * Derive some red exclusion polygons from the input polygons.
+     *
+     * @param input The input polygons.
+     * @return The output polygons.
+     */
+    Collection<? extends PolygonGeometry> deriveExclusionPolygons(Collection<? extends PolygonGeometry> input);
+
+    /**
      * Get a query region that has been added with the given geometry.
      *
      * @param geom The geometry.
      * @return The query region, or {@code null} if one was not found.
      */
     QueryRegion getQueryRegion(Geometry geom);
+
+    /**
+     * Get an exclusion region that has been added with the given geometry.
+     *
+     * @param geom The geometry.
+     * @return The exclusion region, or {@code null} if one was not found.
+     */
+    ExclusionRegion getExclusionRegion(Geometry geom);
 
     /**
      * Gets the query regions.
@@ -107,9 +141,21 @@ public interface QueryRegionManager
     List<? extends QueryRegion> getQueryRegions();
 
     /**
+     * Gets the exclusion regions.
+     *
+     * @return the exclusion regions
+     */
+    List<? extends ExclusionRegion> getExclusionRegions();
+
+    /**
      * Removes all queries.
      */
     void removeAllQueryRegions();
+
+    /**
+     * Removes all exclusion regions.
+     */
+    void removeAllExclusionRegions();
 
     /**
      * Remove a query region associated with some geometries.
@@ -117,6 +163,13 @@ public interface QueryRegionManager
      * @param polygons The geometries.
      */
     void removeQueryRegion(Collection<? extends Geometry> polygons);
+
+    /**
+     * Remove an exclusion region associated with some geometries.
+     *
+     * @param polygons The geometries.
+     */
+    void removeExclusionRegion(Collection<? extends Geometry> polygons);
 
     /**
      * Removes the query region.
@@ -127,6 +180,14 @@ public interface QueryRegionManager
     boolean removeQueryRegion(QueryRegion region);
 
     /**
+     * Removes the exclusion region.
+     *
+     * @param region The region.
+     * @return {@code true} if the region was removed.
+     */
+    boolean removeExclusionRegion(ExclusionRegion region);
+
+    /**
      * Removes the query region listener.
      *
      * @param listener The listener.
@@ -134,11 +195,25 @@ public interface QueryRegionManager
     void removeQueryRegionListener(QueryRegionListener listener);
 
     /**
+     * Removes the exclusion region listener.
+     *
+     * @param listener The listener.
+     */
+    void removeExclusionRegionListener(ExclusionRegionListener listener);
+
+    /**
      * Remove query regions.
      *
      * @param regions The regions to be removed.
      */
     void removeQueryRegions(Collection<? extends QueryRegion> regions);
+
+    /**
+     * Remove exclusion regions.
+     *
+     * @param regions The regions to be removed.
+     */
+    void removeExclusionRegions(Collection<? extends ExclusionRegion> regions);
 
     /**
      * Creates a service that can be used to add/remove the given query region
@@ -164,4 +239,5 @@ public interface QueryRegionManager
             }
         };
     }
+
 }

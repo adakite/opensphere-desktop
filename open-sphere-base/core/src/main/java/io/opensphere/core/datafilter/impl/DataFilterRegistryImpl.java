@@ -41,6 +41,9 @@ public class DataFilterRegistryImpl implements DataFilterRegistry
     /** The type key to spatial filter map. */
     private final Map<String, Geometry> myTypeKeyToSpatialFilterMap = new ConcurrentHashMap<>();
 
+    /** The type key to spatial filter map. */
+    private final Map<String, Geometry> myTypeKeyToSpatialExclusionFilterMap = new ConcurrentHashMap<>();
+
     /** The change support. */
     private final ChangeSupport<DataFilterRegistryListener> myChangeSupport = new WeakChangeSupport<>();
 
@@ -114,6 +117,22 @@ public class DataFilterRegistryImpl implements DataFilterRegistry
         return 0;
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @see io.opensphere.core.datafilter.DataFilterRegistry#addSpatialExclusionFilter(java.lang.String,
+     *      com.vividsolutions.jts.geom.Geometry)
+     */
+    @Override
+    public long addSpatialExclusionFilter(String typeKey, Geometry geometry)
+    {
+        Geometry bufferedGeometry = geometry.buffer(0);
+
+        myTypeKeyToSpatialExclusionFilterMap.put(typeKey, bufferedGeometry);
+        notifyListeners(l -> l.spatialFilterAdded(typeKey, bufferedGeometry));
+        return 0;
+    }
+
     @Override
     public DataFilter getLoadFilter(String typeKey)
     {
@@ -132,10 +151,32 @@ public class DataFilterRegistryImpl implements DataFilterRegistry
         return myTypeKeyToSpatialFilterMap.get(typeKey);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @see io.opensphere.core.datafilter.DataFilterRegistry#getSpatialExclusionFilter(java.lang.String)
+     */
+    @Override
+    public Geometry getSpatialExclusionFilter(String typeKey)
+    {
+        return myTypeKeyToSpatialExclusionFilterMap.get(typeKey);
+    }
+
     @Override
     public Set<String> getSpatialLoadFilterKeys()
     {
         return New.set(myTypeKeyToSpatialFilterMap.keySet());
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @see io.opensphere.core.datafilter.DataFilterRegistry#getSpatialExclusionFilterKeys()
+     */
+    @Override
+    public Set<String> getSpatialExclusionFilterKeys()
+    {
+        return New.set(myTypeKeyToSpatialExclusionFilterMap.keySet());
     }
 
     @Override
@@ -148,6 +189,17 @@ public class DataFilterRegistryImpl implements DataFilterRegistry
     public boolean hasSpatialLoadFilter(String typeKey)
     {
         return myTypeKeyToSpatialFilterMap.containsKey(typeKey);
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @see io.opensphere.core.datafilter.DataFilterRegistry#hasSpatialExclusionFilter(java.lang.String)
+     */
+    @Override
+    public boolean hasSpatialExclusionFilter(String typeKey)
+    {
+        return myTypeKeyToSpatialExclusionFilterMap.containsKey(typeKey);
     }
 
     @Override
@@ -165,6 +217,22 @@ public class DataFilterRegistryImpl implements DataFilterRegistry
     public boolean removeSpatialLoadFilter(final String typeKey)
     {
         final Geometry filter = myTypeKeyToSpatialFilterMap.remove(typeKey);
+        if (filter != null)
+        {
+            notifyListeners(l -> l.spatialFilterRemoved(typeKey, filter));
+        }
+        return filter != null;
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @see io.opensphere.core.datafilter.DataFilterRegistry#removeSpatialExclusionFilter(java.lang.String)
+     */
+    @Override
+    public boolean removeSpatialExclusionFilter(String typeKey)
+    {
+        final Geometry filter = myTypeKeyToSpatialExclusionFilterMap.remove(typeKey);
         if (filter != null)
         {
             notifyListeners(l -> l.spatialFilterRemoved(typeKey, filter));

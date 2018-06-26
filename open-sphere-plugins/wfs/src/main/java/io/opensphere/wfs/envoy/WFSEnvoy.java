@@ -222,6 +222,9 @@ public class WFSEnvoy extends AbstractWFSEnvoy
         OGCFilterParameters filterParams = new OGCFilterParameters();
         filterParams.setLatBeforeLon(wfsType.isLatBeforeLon());
         filterParams.setRegion(geometry.buffer(0));
+
+        filterParams.getExclusionAreas();
+
         filterParams.setTimeSpan(timeSpan);
         filterParams.setUserFilter(userFilter == null ? null
                 : userFilter.applyFieldNameTransform(WFSTimeFieldGetter.getTimeFieldTransform(wfsType)));

@@ -14,6 +14,7 @@ import org.apache.log4j.Logger;
 import com.vividsolutions.jts.geom.CoordinateSequence;
 import com.vividsolutions.jts.geom.Geometry;
 import com.vividsolutions.jts.geom.GeometryCollection;
+import com.vividsolutions.jts.geom.GeometryFactory;
 import com.vividsolutions.jts.geom.Polygon;
 import com.vividsolutions.jts.geom.TopologyException;
 
@@ -65,7 +66,8 @@ public class IntervalPropertyValueSet
         }
         else if (value1 instanceof Geometry && value2 instanceof Geometry)
         {
-            return (T)((Geometry)value1).getEnvelope().union((Geometry)value2).getEnvelopeInternal();
+            return (T)new GeometryFactory()
+                    .toGeometry(((Geometry)value1).getEnvelope().union((Geometry)value2).getEnvelopeInternal());
         }
         else
         {
