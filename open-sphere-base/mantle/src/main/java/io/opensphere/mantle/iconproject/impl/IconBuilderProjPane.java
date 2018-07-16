@@ -3,6 +3,7 @@ package io.opensphere.mantle.iconproject.impl;
 import java.awt.Window;
 
 import javafx.beans.property.DoubleProperty;
+import javafx.beans.property.Property;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
@@ -13,6 +14,7 @@ import javafx.scene.control.ContentDisplay;
 import javafx.scene.control.Label;
 import javafx.scene.control.Slider;
 import javafx.scene.control.Spinner;
+import javafx.scene.effect.ColorAdjust;
 import javafx.scene.effect.Light;
 import javafx.scene.effect.Lighting;
 import javafx.scene.image.ImageView;
@@ -21,6 +23,7 @@ import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
@@ -61,12 +64,16 @@ public class IconBuilderProjPane extends BorderPane
     /** The Color chosen for customized icon. */
     private Color myColor;
 
+//    private DoubleProperty myBright = new SimpleDoubleProperty(0.);
+//    private double oldcolor;
+//    private double newcolor;
+//    private double transcolor;
+
     /**
      * Constructs a new IconBuilderPane.
      *
-     * @param owner the AWT Window
-     * @return the customized icon in the form of a writable image named
-     *         "iconOut".
+     * @param owner the AWT Window.
+     * @param record the selected icon.
      */
     public IconBuilderProjPane(Window owner, IconRecord record)
     {
@@ -79,13 +86,13 @@ public class IconBuilderProjPane extends BorderPane
         VBox bottom = createBottom();
         BorderPane.setMargin(bottom, new Insets(5., 0., 0., 0.));
         setBottom(bottom);
-
+        
         myColorPicker.setOnAction((event) ->
         {
-            theColor = myColorPicker.getValue();
+            myColorPicker.show();
+            myColor = myColorPicker.getValue();
             updateImageColor();
         });
-
     }
 
     /**
@@ -93,9 +100,9 @@ public class IconBuilderProjPane extends BorderPane
      *
      * @return the icon selection & color controls
      */
-    private AnchorPane createTop()
+    private HBox createTop()
     {
-        AnchorPane TopBar = new AnchorPane();
+        HBox TopBar = new HBox();
         Spinner<Number> sizeSpin = new Spinner<>(0.0, 3.0, 1, .1);
         sizeSpin.setPrefWidth(55.);
         sizeSpin.getValueFactory().valueProperty().bindBidirectional(myScale);
@@ -105,20 +112,28 @@ public class IconBuilderProjPane extends BorderPane
         AnchorPane.setRightAnchor(sizeLabel, 0.);
 
         myColorPicker = new ColorPicker();
-        //myColorPicker.getStyleClass().add("button");
+        
+        // myColorPicker.getStyleClass().add("button");
         myColorPicker.setOnMouseEntered(event ->
         {
             myColorPicker.show();
-            // System.out.println("****Accesible role prop: " +
-            // myColorPicker.accessibleRoleProperty());
-            // System.out.println("&&&&&Get children unmodifiable: " +
-            // myColorPicker.getChildrenUnmodifiable());
         });
-        /*myColorPicker.setOnMouseExited(event ->
-        {
-            System.out.println("^^^^^^^^Accesible role prop time2:   " + myColorPicker.accessibleRoleProperty());
-        });*/
+        /* myColorPicker.setOnMouseExited(event -> {
+         * System.out.println("^^^^^^^^Accesible role prop time2:   " +
 
+//        Slider brightSlider = new Slider(-1., 1., 0.);
+//        brightSlider.setBlockIncrement(.1);
+//        brightSlider.valueProperty().bindBidirectional(myBright);   
+//        brightSlider.onMousePressedProperty().set(event -> { oldcolor =
+//        brightSlider.getValue(); });
+//        brightSlider.onMouseReleasedProperty().set(event -> { newcolor =
+//        brightSlider.getValue(); updateImageBrightness(); }); */
+//        brightSlider.setOnMouseClicked(event_ -> updateImageBrightness());
+//        brightSlider.setMaxWidth(80.);
+//        Label brightLabel = new Label("Brightness: ", brightSlider);
+//        brightLabel.setContentDisplay(ContentDisplay.RIGHT);
+//        AnchorPane.setLeftAnchor(brightLabel, 175.);
+        
         TopBar.getChildren().addAll(myColorPicker, sizeLabel, sizeSpin);
         return TopBar;
     }
@@ -130,8 +145,9 @@ public class IconBuilderProjPane extends BorderPane
      */
     private VBox createRight()
     {
-        VBox rotBox = new VBox(8);
-        rotBox.setAlignment(Pos.TOP_CENTER);
+
+        VBox box = new VBox(8);
+        box.setAlignment(Pos.TOP_CENTER);
 
         Slider rotSlider = new Slider(-180, 180, 0);
         rotSlider.setOrientation(Orientation.VERTICAL);
@@ -140,20 +156,21 @@ public class IconBuilderProjPane extends BorderPane
         rotSlider.setMajorTickUnit(45);
         rotSlider.valueProperty().bindBidirectional(myRotation);
 
-        Spinner<Number> rotSpin = new Spinner<>(-180., 180., 0.);
-        rotSpin.setPrefWidth(40.);
-        rotSpin.getValueFactory().valueProperty().bindBidirectional(myRotation);
-        rotSpin.setEditable(true);
-        rotSpin.getStyleClass().clear();
+        Spinner<Number> rotSpinner = new Spinner<>(-180., 180., 0.);
+        rotSpinner.setPrefWidth(40.);
+        rotSpinner.getValueFactory().valueProperty().bindBidirectional(myRotation);
+        rotSpinner.setEditable(true);
+        rotSpinner.getStyleClass().clear();
 
-        Label rotLabel = new Label("Rotation: ", rotSpin);
+        Label rotLabel = new Label("Rotation: ", rotSpinner);
         rotLabel.setContentDisplay(ContentDisplay.BOTTOM);
 
         VBox.setVgrow(rotSlider, Priority.ALWAYS);
-        VBox.setVgrow(rotSpin, Priority.NEVER);
-        rotBox.getChildren().addAll(rotSlider, rotLabel, rotSpin);
+        VBox.setVgrow(rotSpinner, Priority.NEVER);
+        box.getChildren().addAll(rotSlider, rotLabel, rotSpinner);
 
-        return rotBox;
+        return box;
+
     }
 
     /**
@@ -244,9 +261,37 @@ public class IconBuilderProjPane extends BorderPane
 
         if (myIconView != null)
         {
-            myImageRenderView.setEffect(lighting);
+            myIconView.setEffect(lighting);
         }
     }
+
+    /**
+     * Updates the brightness of the selected icon when the brightness slider
+     * selection changes.
+     */
+//    private void updateImageBrightness()
+//    {
+//        if (newcolor > oldcolor)
+//        {
+//            myColor = myColor.brighter();
+//        }
+//        else
+//        {
+//            myColor = myColor.darker();
+//        }
+//        if (newcolor == oldcolor)
+//            if (newcolor > transcolor && transcolor != 1. || transcolor != -1.)
+//            {
+//                myColor = myColor.brighter();
+//            }
+//            else
+//            {
+//                myColor = myColor.darker();
+//
+//            }
+//        transcolor = newcolor;
+//        updateImageColor();
+//    }
 
     /**
      * Retrieves the final processed image as a BufferedImage.
@@ -273,8 +318,16 @@ public class IconBuilderProjPane extends BorderPane
      * @return the image name.
      */
     public String getImageName()
+
     {
-        return myIconRecord != null ? myIconRecord.getName() + "_" + myIconView.getRotate() + "_" + myColor.getRed() + "-"
-                + +myColor.getGreen() + "-" + myColor.getBlue() : null;
+
+        if (myColor != null)
+
+        {
+            return myIconRecord != null ? myIconRecord.getName() + "_" + myIconView.getRotate() + "_" + myColor.getRed() + "-"
+                    + +myColor.getGreen() + "-" + myColor.getBlue() : null;
+        }
+
+        return myIconRecord != null ? myIconRecord.getName() + "_" + myIconView.getRotate() : null;
     }
 }
