@@ -7,6 +7,9 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.Arrays;
 import java.util.Collection;
@@ -177,7 +180,8 @@ public class StateImportController implements FileOrURLImporter
     public void importFile(File aFile, ImportCallback callback)
     {
         boolean success = false;
-        try (InputStream inputStream = readFile(aFile))
+        try (InputStream inputStream = getImportStream(aFile.toURI()))
+//                readFile(aFile))
         {
             if (inputStream != null)
             {
@@ -200,6 +204,25 @@ public class StateImportController implements FileOrURLImporter
         if (callback != null)
         {
             callback.fileImportComplete(success, aFile, null);
+        }
+    }
+
+    private InputStream getImportStream(URI uri)
+    {
+        if (uri.getScheme().contains("file"))
+        {
+            readFile(new File(uri));
+        }
+        else
+        {
+            try
+            {
+                readUrl(uri.toURL());
+            }
+            catch (MalformedURLException e)
+            {
+                LOGGER.error(e);
+            }
         }
     }
 
@@ -300,7 +323,8 @@ public class StateImportController implements FileOrURLImporter
     private void importURL(URL aURL, Component component, ImportCallback callback)
     {
         boolean success = false;
-        try (InputStream inputStream = readUrl(aURL))
+        try (InputStream inputStream = getImportStream(aURL.toURI()))
+//                readUrl(aURL))
         {
             if (inputStream != null)
             {
@@ -318,6 +342,10 @@ public class StateImportController implements FileOrURLImporter
         catch (IOException e)
         {
             LOGGER.warn(e);
+        }
+        catch (URISyntaxException e)
+        {
+            LOGGER.error(e);
         }
 
         if (callback != null)

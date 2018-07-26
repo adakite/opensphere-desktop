@@ -19,7 +19,7 @@ public class StatePlugin extends PluginAdapter
     private Toolbox myToolbox;
 
     /** The menu provider for the clear button. */
-    private ClearStatesMenuProvider myClearStatesMenuProvider;
+    private DisableStatesMenuProvider myDisableStatesMenuProvider;
 
     /** The import controller. */
     private StateImportController myImportController;
@@ -48,9 +48,9 @@ public class StatePlugin extends PluginAdapter
     {
         myToolbox = toolbox;
 
-        myClearStatesMenuProvider = new ClearStatesMenuProvider(toolbox.getModuleStateManager());
+        myDisableStatesMenuProvider = new DisableStatesMenuProvider(toolbox.getModuleStateManager());
         toolbox.getUIRegistry().getContextActionManager().registerContextMenuItemProvider(ContextIdentifiers.DELETE_CONTEXT,
-                Void.class, myClearStatesMenuProvider);
+                Void.class, myDisableStatesMenuProvider);
 
         myImportController = new StateImportController(toolbox.getUIRegistry().getMainFrameProvider(),
                 toolbox.getModuleStateManager(), toolbox);
@@ -64,7 +64,7 @@ public class StatePlugin extends PluginAdapter
     {
         myToolbox.getUIRegistry().getToolbarComponentRegistry().deregisterToolbarComponent(ToolbarLocation.NORTH, "State");
         myToolbox.getUIRegistry().getContextActionManager().deregisterContextMenuItemProvider(ContextIdentifiers.DELETE_CONTEXT,
-                Void.class, myClearStatesMenuProvider);
+                Void.class, myDisableStatesMenuProvider);
         myToolbox.getImporterRegistry().removeImporter(myImportController);
     }
 

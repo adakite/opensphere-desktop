@@ -15,6 +15,7 @@ import java.util.Collections;
 import java.util.List;
 
 import javax.swing.Icon;
+import javax.swing.JLabel;
 import javax.swing.JMenuItem;
 import javax.swing.JPopupMenu;
 import javax.swing.event.PopupMenuEvent;
@@ -54,6 +55,8 @@ public class SplitButton extends IconButton
 
     /** When true, do not open the menu when the action is fired. */
     private boolean mySkipNextMenu;
+
+    private List<Component> myStaticMenuItems = New.list();
 
     /**
      * Constructor.
@@ -162,6 +165,7 @@ public class SplitButton extends IconButton
     {
         pMenuItem.setFocusable(false);
         myMenu.add(pMenuItem);
+        myStaticMenuItems.add(pMenuItem);
     }
 
     /**
@@ -228,10 +232,7 @@ public class SplitButton extends IconButton
         // Remove the old dynamic menu items
         if (!myDynamicMenuItems.isEmpty())
         {
-            for (Component c : myDynamicMenuItems)
-            {
-                myMenu.remove(c);
-            }
+            myMenu.removeAll();
             myDynamicMenuItems.clear();
         }
 
@@ -239,11 +240,17 @@ public class SplitButton extends IconButton
         List<Component> newDynamicItems = getDynamicMenuItems();
         if (!newDynamicItems.isEmpty())
         {
+            myMenu.add(new JLabel("SAVED STATES"));
             myDynamicMenuItems.addAll(newDynamicItems);
             for (Component c : newDynamicItems)
             {
                 myMenu.add(c);
             }
+            myMenu.addSeparator();
+        }
+        for (Component c : myStaticMenuItems)
+        {
+            myMenu.add(c);
         }
 
         boolean empty = myMenu.getComponentCount() == 0;

@@ -12,7 +12,7 @@ import io.opensphere.core.util.Utilities;
 /**
  * A menu provider for the clear states button.
  */
-public class ClearStatesMenuProvider implements ContextMenuProvider<Void>
+public class DisableStatesMenuProvider implements ContextMenuProvider<Void>
 {
     /** The module state manager. */
     private final ModuleStateManager myModuleStateManager;
@@ -22,7 +22,7 @@ public class ClearStatesMenuProvider implements ContextMenuProvider<Void>
      *
      * @param moduleStateManager The module state manager.
      */
-    public ClearStatesMenuProvider(ModuleStateManager moduleStateManager)
+    public DisableStatesMenuProvider(ModuleStateManager moduleStateManager)
     {
         myModuleStateManager = Utilities.checkNull(moduleStateManager, "moduleStateManager");
     }

@@ -1,5 +1,6 @@
 package io.opensphere.controlpanels.state;
 
+import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.EventQueue;
@@ -29,8 +30,8 @@ import javax.swing.JList;
 import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
 import javax.swing.JScrollPane;
-import javax.swing.JSeparator;
 import javax.swing.ListSelectionModel;
+import javax.swing.SwingConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.SwingWorker;
 
@@ -45,13 +46,13 @@ import io.opensphere.core.modulestate.SaveStateDialog;
 import io.opensphere.core.modulestate.StateData;
 import io.opensphere.core.preferences.PreferencesRegistry;
 import io.opensphere.core.quantify.Quantify;
+import io.opensphere.core.util.AwesomeIconSolid;
 import io.opensphere.core.util.Utilities;
 import io.opensphere.core.util.collections.New;
 import io.opensphere.core.util.filesystem.MnemonicFileChooser;
-import io.opensphere.core.util.image.IconUtil;
-import io.opensphere.core.util.image.IconUtil.IconType;
 import io.opensphere.core.util.lang.StringUtilities;
 import io.opensphere.core.util.swing.EventQueueUtilities;
+import io.opensphere.core.util.swing.GenericFontIcon;
 import io.opensphere.core.util.swing.OptionDialog;
 import io.opensphere.core.util.swing.SplitButton;
 import io.opensphere.core.util.taskactivity.CancellableTaskActivity;
@@ -77,7 +78,7 @@ class StateView
     private final PreferencesRegistry myPrefsRegistry;
 
     /** The state control split button. */
-    private final SplitButton myStateControlButton;
+    private final SplitButton /* IconButton */ myStateControlButton;
 
     /**
      * Constructor.
@@ -92,7 +93,7 @@ class StateView
         myPrefsRegistry = Utilities.checkNull(toolbox.getPreferencesRegistry(), "prefsRegistry");
         myMenuBarRegistry = Utilities.checkNull(toolbox.getUIRegistry().getMenuBarRegistry(), "menuBarRegistry");
 
-        myStateControlButton = new SplitButton(null, null)
+        myStateControlButton = new SplitButton("States", new GenericFontIcon(AwesomeIconSolid.BOOKMARK, Color.YELLOW), false)
         {
             /** Serial version UID. */
             private static final long serialVersionUID = 1L;
@@ -104,42 +105,95 @@ class StateView
                 List<Component> menuItems = New.list(states.size());
                 for (String state : states)
                 {
-                    JCheckBoxMenuItem menuItem = new JCheckBoxMenuItem(new ToggleStateAction(state));
                     String stateDescription = myController.getStateDescription(state);
+                    JMenuItem menuItem = new JCheckBoxMenuItem(new ToggleStateAction(state));
                     menuItem.setToolTipText(StringUtilities.concat("Toggle ", state, " (description: ",
                             stateDescription.isEmpty() ? "empty" : stateDescription, ")"));
+                    menuItem.setHorizontalTextPosition(SwingConstants.LEFT);
+//                            createAlignedMenuItem(
+//                                    new ToggleStateAction(state), null, StringUtilities.concat("Toggle ", state,
+//                                            " (description: ", stateDescription.isEmpty() ? "empty" : stateDescription, ")"),
+//                                    true);
                     menuItems.add(menuItem);
                 }
                 return menuItems;
             }
         };
-        SaveStateAction saveStateAction = new SaveStateAction();
-        myStateControlButton.setAction(saveStateAction);
-        myStateControlButton.setText("Save State");
+//        myStateControlButton = new IconButton("States", new GenericFontIcon(AwesomeIconSolid.BOOKMARK, Color.YELLOW));
+        myStateControlButton.setToolTipText("States controls");
 
-        JMenuItem saveStateMenuItem = new JMenuItem(saveStateAction);
-        myStateControlButton.addMenuItem(saveStateMenuItem);
-        JMenuItem clearMenuItem = new JMenuItem(new ClearStatesAction());
-        myStateControlButton.addMenuItem(clearMenuItem);
+//        JPopupMenu popupMenu = new JPopupMenu();
+//        myStateControlButton.addActionListener(new ActionListener()
+//        {
+//            @Override
+//            public void actionPerformed(ActionEvent e)
+//            {
+//                popupMenu.setVisible(true);
+//            }
+//        });
+        /* (new MouseAdapter() { public void mousePressed(MouseEvent e) { popupMenu.show(e.getComponent(), e.getX(), e.getY()); }}); */
+
+        JMenuItem importMenuItem = new JMenuItem();
+        importMenuItem.setIcon(new GenericFontIcon(AwesomeIconSolid.CLOUD_DOWNLOAD_ALT, Color.WHITE));
+        importMenuItem.setToolTipText("Import a state from url or file");
+        myStateControlButton.addMenuItem(importMenuItem);
+
+        JMenuItem saveMenuItem = new JMenuItem(new SaveStateAction());
+//                createAlignedMenuItem(new SaveStateAction(),
+//                new GenericFontIcon(AwesomeIconSolid.SAVE, Color.WHITE), "Save the current application state", false);
+        saveMenuItem.setIcon(new GenericFontIcon(AwesomeIconSolid.SAVE, Color.WHITE));
+        saveMenuItem.setToolTipText("Save the current application state");
+        myStateControlButton.addMenuItem(saveMenuItem);
+//        popupMenu.add(saveMenuItem);
+
+        JMenuItem disableMenuItem = new JMenuItem(new DisableStatesAction());
+//                createAlignedMenuItem(new DisableStatesAction(),
+//                new GenericFontIcon(AwesomeIconSolid.TIMES, Color.WHITE), "Deactivate all states", false);
+        disableMenuItem.setIcon(new GenericFontIcon(AwesomeIconSolid.TIMES, Color.WHITE));
+        disableMenuItem.setToolTipText("Deactivate all states");
+        myStateControlButton.addMenuItem(disableMenuItem);
+//        popupMenu.add(disableMenuItem);
+
         JMenuItem deleteMenuItem = new JMenuItem(new DeleteStatesAction());
-        myStateControlButton.addMenuItem(deleteMenuItem);
-        myStateControlButton.add(new JSeparator());
-
-        IconUtil.setIcons(myStateControlButton, IconType.DISK);
-
-        String saveTooltip = "Save the current application state";
-        myStateControlButton.setToolTipText(saveTooltip);
-        saveStateMenuItem.setToolTipText(saveTooltip);
-        clearMenuItem.setToolTipText("Deactivate all states");
+//                createAlignedMenuItem(new DeleteStatesAction(),
+//                new GenericFontIcon(AwesomeIconSolid.TRASH_ALT, Color.WHITE), "Delete states from the application", false);
+        deleteMenuItem.setIcon(new GenericFontIcon(AwesomeIconSolid.TRASH_ALT, Color.WHITE));
         deleteMenuItem.setToolTipText("Remove states from the application");
+        myStateControlButton.addMenuItem(deleteMenuItem);
+//        popupMenu.add(deleteMenuItem);
+
+//        myStateControlButton.add(new JSeparator());
     }
+
+//    /**
+//     * Creates a menu item with either an icon or a checkbox. This allows the menu items with checkboxes to line up neatly with the menu items with icons.
+//     *
+//     * @param action the action of the menu item
+//     * @param icon the icon for the menu item, or null
+//     * @param toolTipText the tooltip for the menu item
+//     * @param useCheckBox if a checkbox menu item should be returned
+//     * @return the aligned menu item with either a checkbox or icon
+//     */
+//    private JMenuItem createAlignedMenuItem(Action action, Icon icon, String toolTipText, boolean useCheckBox)
+//    {
+//        JMenuItem alignedMenuItem = useCheckBox ? new JCheckBoxMenuItem() : new JMenuItem();
+////                new JCheckBoxMenuItem(action);
+//        alignedMenuItem.setAction(action);
+//        alignedMenuItem.setIcon(icon);
+//        alignedMenuItem.setToolTipText(toolTipText);
+//        alignedMenuItem.setMargin(new Insets(5, 25, 5, 5));
+//        alignedMenuItem.setIconTextGap(15);
+//        alignedMenuItem.setHorizontalTextPosition(SwingConstants.RIGHT);
+//
+//        return alignedMenuItem;
+//    }
 
     /**
      * Get the state control button.
      *
      * @return The button.
      */
-    public SplitButton getStateControlButton()
+    public SplitButton /* IconButton */ getStateControlButton()
     {
         return myStateControlButton;
     }
@@ -176,10 +230,10 @@ class StateView
         }
 
         Collection<? extends String> modulesThatCanSaveState = myController.getModulesThatCanSaveState();
-        Map<String, Collection<? extends String>> stateDependencies = myController
-                .getStateDependenciesForModules(myController.getModulesThatSaveStateByDefault());
-        SaveStateDialog dialog = new SaveStateDialog(parent, modulesThatCanSaveState, stateDependencies, disallowedStateNames,
-                saveTos);
+        Map<String, Collection<? extends String>> stateDependencies =
+                myController.getStateDependenciesForModules(myController.getModulesThatSaveStateByDefault());
+        SaveStateDialog dialog =
+                new SaveStateDialog(parent, modulesThatCanSaveState, stateDependencies, disallowedStateNames, saveTos);
 
         saveToApp.addActionListener(new ActionListener()
         {
@@ -326,9 +380,9 @@ class StateView
     }
 
     /**
-     * Clear states action.
+     * Disable states action.
      */
-    private final class ClearStatesAction extends AbstractAction
+    private final class DisableStatesAction extends AbstractAction
     {
         /** Serial version UID. */
         private static final long serialVersionUID = 1L;
@@ -336,15 +390,15 @@ class StateView
         /**
          * Constructor.
          */
-        public ClearStatesAction()
+        public DisableStatesAction()
         {
-            super("Clear States");
+            super("Disable States");
         }
 
         @Override
         public void actionPerformed(ActionEvent e)
         {
-            Quantify.collectMetric("mist3d.state.clear-states");
+            Quantify.collectMetric("mist3d.state.disable-states");
             myController.deactivateAllStates();
         }
     }
@@ -362,13 +416,13 @@ class StateView
          */
         public DeleteStatesAction()
         {
-            super("Delete States...");
+            super("Delete States");
         }
 
         @Override
         public void actionPerformed(ActionEvent e)
         {
-            Quantify.collectMetric("mist3d.state.remove-states");
+            Quantify.collectMetric("mist3d.state.delete-states");
             Collection<? extends String> availableStates = myController.getAvailableStates();
             if (availableStates.isEmpty())
             {
@@ -417,13 +471,13 @@ class StateView
          */
         public SaveStateAction()
         {
-            super("Save State...");
+            super("Save State");
         }
 
         @Override
         public void actionPerformed(ActionEvent e)
         {
-            Quantify.collectMetric("mist3d.state.create-state");
+            Quantify.collectMetric("mist3d.state.save-state");
             saveState();
         }
     }
@@ -449,9 +503,10 @@ class StateView
         @Override
         public void actionPerformed(ActionEvent e)
         {
-            Quantify.collectMetric("mist3d.state.activate-state");
+            boolean activeState = myController.isStateActive(getName());
+            Quantify.collectMetric("mist3d.state." + (activeState ? "deactivate" : "activate") + "-state");
             CancellableTaskActivity ta = new CancellableTaskActivity();
-            ta.setLabelValue((myController.isStateActive(getName()) ? "Deactivating state " : "Activating state ") + getName());
+            ta.setLabelValue((activeState ? "Deactivating state " : "Activating state ") + getName());
             ta.setActive(true);
             myMenuBarRegistry.addTaskActivity(ta);
             SwingWorker<Void, Void> worker = EventQueueUtilities.waitCursorRun(myStateControlButton,
