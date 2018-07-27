@@ -221,12 +221,12 @@ public final class ActiveLayerControlPanel extends LayerControlPanel
             Collection<Object> objects = CollectionUtilities.concat(selectEvent.getDataGroupInfos(),
                     selectEvent.getDataTypeInfos());
             List<Exporter> exporters = Exporters.getExporters(objects, getToolbox(), java.io.File.class);
-            if (exporters.isEmpty())
-            {
-                myExportButton.setVisible(false);
-            }
-            else
-            {
+//            if (exporters.isEmpty())
+//            {
+//                myExportButton.setVisible(false);
+//            }
+//            else
+//            {
                 myExportButton.removeAll();
                 ExportMenuProvider menuProvider = new ExportMenuProvider();
                 for (JMenuItem menuItem : menuProvider.getMenuItems(getToolbox(), "Export to ", exporters))
@@ -234,7 +234,7 @@ public final class ActiveLayerControlPanel extends LayerControlPanel
                     myExportButton.add(menuItem);
                 }
                 myExportButton.setVisible(true);
-            }
+//            }
             if (selectedType != null && selectedType.getMetaDataInfo() != null && selectedType.getMapVisualizationInfo() != null
                     && selectedType.getMapVisualizationInfo().usesMapDataElements())
             {
@@ -526,10 +526,9 @@ public final class ActiveLayerControlPanel extends LayerControlPanel
      */
     private JButton buildExportButton()
     {
-        myExportButton = new SplitButton(null, null);
+        myExportButton = new SplitButton(null, null, false);
         IconUtil.setIcons(myExportButton, IconType.EXPORT);
         myExportButton.setToolTipText("Export the selected layers");
-        myExportButton.setAlwaysPopup(true);
 
         return myExportButton;
     }

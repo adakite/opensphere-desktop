@@ -37,11 +37,14 @@ import javax.swing.SwingWorker;
 
 import org.apache.log4j.Logger;
 
+import io.opensphere.controlpanels.layers.importdata.ImportDataController;
 import io.opensphere.core.Toolbox;
 import io.opensphere.core.control.ui.MenuBarRegistry;
 import io.opensphere.core.export.ExportException;
 import io.opensphere.core.export.Exporter;
 import io.opensphere.core.export.Exporters;
+import io.opensphere.core.importer.FileOrURLImporterMenuItem;
+import io.opensphere.core.importer.ImportType;
 import io.opensphere.core.modulestate.SaveStateDialog;
 import io.opensphere.core.modulestate.StateData;
 import io.opensphere.core.preferences.PreferencesRegistry;
@@ -78,18 +81,23 @@ class StateView
     private final PreferencesRegistry myPrefsRegistry;
 
     /** The state control split button. */
-    private final SplitButton /* IconButton */ myStateControlButton;
+    private final SplitButton myStateControlButton;
+
+    /** The state import controller. */
+    private final StateImportController myImportController;
 
     /**
      * Constructor.
      *
-     * @param controller The state controller.
-     * @param toolbox The toolbox.
+     * @param controller The state controller
+     * @param importController The state import controller
+     * @param toolbox The toolbox
      */
-    public StateView(StateController controller, Toolbox toolbox)
+    public StateView(StateController controller, StateImportController importController, Toolbox toolbox)
     {
         myController = Utilities.checkNull(controller, "controller");
         myToolbox = toolbox;
+        myImportController = importController;
         myPrefsRegistry = Utilities.checkNull(toolbox.getPreferencesRegistry(), "prefsRegistry");
         myMenuBarRegistry = Utilities.checkNull(toolbox.getUIRegistry().getMenuBarRegistry(), "menuBarRegistry");
 
@@ -101,6 +109,7 @@ class StateView
             @Override
             protected List<Component> getDynamicMenuItems()
             {
+                System.out.println("Getting state menu items");
                 Collection<? extends String> states = myController.getAvailableStates();
                 List<Component> menuItems = New.list(states.size());
                 for (String state : states)
@@ -110,90 +119,66 @@ class StateView
                     menuItem.setToolTipText(StringUtilities.concat("Toggle ", state, " (description: ",
                             stateDescription.isEmpty() ? "empty" : stateDescription, ")"));
                     menuItem.setHorizontalTextPosition(SwingConstants.LEFT);
-//                            createAlignedMenuItem(
-//                                    new ToggleStateAction(state), null, StringUtilities.concat("Toggle ", state,
-//                                            " (description: ", stateDescription.isEmpty() ? "empty" : stateDescription, ")"),
-//                                    true);
                     menuItems.add(menuItem);
                 }
                 return menuItems;
             }
+
+            @Override
+            protected String getDynamicMenuItemsLabel()
+            {
+                return "SAVED STATES";
+            }
         };
-//        myStateControlButton = new IconButton("States", new GenericFontIcon(AwesomeIconSolid.BOOKMARK, Color.YELLOW));
         myStateControlButton.setToolTipText("States controls");
 
-//        JPopupMenu popupMenu = new JPopupMenu();
-//        myStateControlButton.addActionListener(new ActionListener()
-//        {
-//            @Override
-//            public void actionPerformed(ActionEvent e)
-//            {
-//                popupMenu.setVisible(true);
-//            }
-//        });
-        /* (new MouseAdapter() { public void mousePressed(MouseEvent e) { popupMenu.show(e.getComponent(), e.getX(), e.getY()); }}); */
+        ActionListener importActionListener = new ActionListener()
+        {
+            @Override
+            public void actionPerformed(ActionEvent e)
+            {
+                if (e.getSource() instanceof FileOrURLImporterMenuItem)
+                {
+                    FileOrURLImporterMenuItem importerMenuItem = (FileOrURLImporterMenuItem)e.getSource();
+                    ImportDataController.getInstance(myToolbox).importSpecific(importerMenuItem.getImporter(), importerMenuItem.getImportType());
+                }
+            }
+        };
 
-        JMenuItem importMenuItem = new JMenuItem();
-        importMenuItem.setIcon(new GenericFontIcon(AwesomeIconSolid.CLOUD_DOWNLOAD_ALT, Color.WHITE));
-        importMenuItem.setToolTipText("Import a state from url or file");
-        myStateControlButton.addMenuItem(importMenuItem);
+        JMenuItem importURLMenuItem = new FileOrURLImporterMenuItem(myImportController, ImportType.URL);
+        importURLMenuItem.addActionListener(importActionListener);
+        importURLMenuItem.setIcon(new GenericFontIcon(AwesomeIconSolid.CLOUD_DOWNLOAD_ALT, Color.WHITE));
+        importURLMenuItem.setToolTipText("Import a state from a url");
+        myStateControlButton.addMenuItem(importURLMenuItem);
+
+        JMenuItem importFileMenuItem = new FileOrURLImporterMenuItem(myImportController, ImportType.FILE);
+        importFileMenuItem.addActionListener(importActionListener);
+        importFileMenuItem.setIcon(new GenericFontIcon(AwesomeIconSolid.CLOUD_DOWNLOAD_ALT, Color.WHITE));
+        importFileMenuItem.setToolTipText("Import a state from a file");
+        myStateControlButton.addMenuItem(importFileMenuItem);
 
         JMenuItem saveMenuItem = new JMenuItem(new SaveStateAction());
-//                createAlignedMenuItem(new SaveStateAction(),
-//                new GenericFontIcon(AwesomeIconSolid.SAVE, Color.WHITE), "Save the current application state", false);
         saveMenuItem.setIcon(new GenericFontIcon(AwesomeIconSolid.SAVE, Color.WHITE));
         saveMenuItem.setToolTipText("Save the current application state");
         myStateControlButton.addMenuItem(saveMenuItem);
-//        popupMenu.add(saveMenuItem);
 
         JMenuItem disableMenuItem = new JMenuItem(new DisableStatesAction());
-//                createAlignedMenuItem(new DisableStatesAction(),
-//                new GenericFontIcon(AwesomeIconSolid.TIMES, Color.WHITE), "Deactivate all states", false);
         disableMenuItem.setIcon(new GenericFontIcon(AwesomeIconSolid.TIMES, Color.WHITE));
         disableMenuItem.setToolTipText("Deactivate all states");
         myStateControlButton.addMenuItem(disableMenuItem);
-//        popupMenu.add(disableMenuItem);
 
         JMenuItem deleteMenuItem = new JMenuItem(new DeleteStatesAction());
-//                createAlignedMenuItem(new DeleteStatesAction(),
-//                new GenericFontIcon(AwesomeIconSolid.TRASH_ALT, Color.WHITE), "Delete states from the application", false);
         deleteMenuItem.setIcon(new GenericFontIcon(AwesomeIconSolid.TRASH_ALT, Color.WHITE));
         deleteMenuItem.setToolTipText("Remove states from the application");
         myStateControlButton.addMenuItem(deleteMenuItem);
-//        popupMenu.add(deleteMenuItem);
-
-//        myStateControlButton.add(new JSeparator());
     }
-
-//    /**
-//     * Creates a menu item with either an icon or a checkbox. This allows the menu items with checkboxes to line up neatly with the menu items with icons.
-//     *
-//     * @param action the action of the menu item
-//     * @param icon the icon for the menu item, or null
-//     * @param toolTipText the tooltip for the menu item
-//     * @param useCheckBox if a checkbox menu item should be returned
-//     * @return the aligned menu item with either a checkbox or icon
-//     */
-//    private JMenuItem createAlignedMenuItem(Action action, Icon icon, String toolTipText, boolean useCheckBox)
-//    {
-//        JMenuItem alignedMenuItem = useCheckBox ? new JCheckBoxMenuItem() : new JMenuItem();
-////                new JCheckBoxMenuItem(action);
-//        alignedMenuItem.setAction(action);
-//        alignedMenuItem.setIcon(icon);
-//        alignedMenuItem.setToolTipText(toolTipText);
-//        alignedMenuItem.setMargin(new Insets(5, 25, 5, 5));
-//        alignedMenuItem.setIconTextGap(15);
-//        alignedMenuItem.setHorizontalTextPosition(SwingConstants.RIGHT);
-//
-//        return alignedMenuItem;
-//    }
 
     /**
      * Get the state control button.
      *
      * @return The button.
      */
-    public SplitButton /* IconButton */ getStateControlButton()
+    public SplitButton getStateControlButton()
     {
         return myStateControlButton;
     }
@@ -230,10 +215,10 @@ class StateView
         }
 
         Collection<? extends String> modulesThatCanSaveState = myController.getModulesThatCanSaveState();
-        Map<String, Collection<? extends String>> stateDependencies =
-                myController.getStateDependenciesForModules(myController.getModulesThatSaveStateByDefault());
-        SaveStateDialog dialog =
-                new SaveStateDialog(parent, modulesThatCanSaveState, stateDependencies, disallowedStateNames, saveTos);
+        Map<String, Collection<? extends String>> stateDependencies = myController
+                .getStateDependenciesForModules(myController.getModulesThatSaveStateByDefault());
+        SaveStateDialog dialog = new SaveStateDialog(parent, modulesThatCanSaveState, stateDependencies, disallowedStateNames,
+                saveTos);
 
         saveToApp.addActionListener(new ActionListener()
         {
@@ -510,7 +495,7 @@ class StateView
             ta.setActive(true);
             myMenuBarRegistry.addTaskActivity(ta);
             SwingWorker<Void, Void> worker = EventQueueUtilities.waitCursorRun(myStateControlButton,
-                    () -> myController.toggleState(getName()), () -> ta.setComplete(true));
+                () -> myController.toggleState(getName()), () -> ta.setComplete(true));
             ta.cancelledProperty().addListener((v, o, n) -> worker.cancel(true));
         }
 

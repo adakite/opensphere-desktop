@@ -207,23 +207,31 @@ public class StateImportController implements FileOrURLImporter
         }
     }
 
+    /**
+     * Gets the import stream from a URI. The URI may come from a local file or a web url.
+     *
+     * @param uri the web uri or file location uri
+     * @return the input stream or null if there is an exception
+     */
     private InputStream getImportStream(URI uri)
     {
+        InputStream inputStream = null;
         if (uri.getScheme().contains("file"))
         {
-            readFile(new File(uri));
+            inputStream = readFile(new File(uri));
         }
         else
         {
             try
             {
-                readUrl(uri.toURL());
+                inputStream = readUrl(uri.toURL());
             }
             catch (MalformedURLException e)
             {
                 LOGGER.error(e);
             }
         }
+        return inputStream;
     }
 
     @Override
